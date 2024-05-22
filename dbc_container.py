@@ -7,32 +7,30 @@ from dash import Input, Output, dcc, html
 # Create a sample layout
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SLATE])
 
-# Sample function to create a figure
 df = px.data.iris()
+pathname = 'Actuals'
 
+DARK_COLOR = 'rgba(0, 0, 0, 0)'
 SIDEBAR_STYLE = {
     "position": "fixed",
     "top": 0,
     "left": 0,
     "bottom": 0,
-    "width": "16rem",
+    "width": "12rem",
     "padding": "2rem 1rem",
-    "background-color": "#f8f9fa",
+    "background-color": 'rgba(0, 0, 0, 0)',
 }
 
 sidebar = html.Div(
     [
-        html.H2("Sidebar", className="display-4"),
+        html.H2(id="sidebar_title", className="display-4"),
         html.Hr(),
-        html.P(
-            "A simple sidebar layout with navigation links", className="lead"
-        ),
+        html.H2(id='callback2', className="lead"),
         dbc.Nav(
             [
-                dbc.NavLink("Home", href="/", active="exact"),
-                #dbc.NavLink("Page 1", href="/page-11", active="exact"),
-                dbc.NavLink("Page 2", href="/page-2", active="exact"),
-                dbc.NavLink("Page 3", href="/page-3", active="exact"),
+                dbc.NavLink("Actuals", href="/Actuals", active="exact"),
+                dbc.NavLink("KPI", href="/KPI", active="exact"),
+                dbc.NavLink("Predictive Analytics", href="/PredictiveAnalytics", active="exact"),
             ],
             vertical=True,
             pills=True,
@@ -48,8 +46,8 @@ def drawFigure(df, in_id):
                 figure=px.bar(df, x="sepal_width", y="sepal_length", color="species")
                     .update_layout(
                         template='plotly_dark',
-                        plot_bgcolor='rgba(0, 0, 0, 0)',
-                        paper_bgcolor='rgba(0, 0, 0, 0)',
+                        plot_bgcolor=DARK_COLOR,
+                        paper_bgcolor=DARK_COLOR,
                     ),
                 config={'displayModeBar': False}
             )
@@ -63,24 +61,19 @@ in_service =  dcc.RadioItems(
             {'label': 'virginica', 'value': 'virginica'},
             {'label': 'versicolor', 'value': 'versicolor'}], value='setosa' ) # Set the default value)
 
-# def draw_g(df):
-#     graph1 = dcc.Graph(id='test1',
-#                     figure=px.bar(df, x="sepal_width", y="sepal_length", color="species")
-#                         .update_layout(
-#                             template='plotly_dark',
-#                             plot_bgcolor='rgba(0, 0, 0, 0)',
-#                             paper_bgcolor='rgba(0, 0, 0, 0)',
-#                         ),
-#                     config={'displayModeBar': False}
-#                 )
-#     return graph1
+
+def actuals_container():
+    return 1
 
 
-app.layout = html.Div([
-    dbc.Container([
+main_container = actuals_container()
+
+app.layout = html.Div([dcc.Location(id="url")
+    , dbc.Container([sidebar])
+    ,   dbc.Container([
         dbc.Row([
+            dbc.Col(),
             dbc.Col(in_service),
-            dbc.Col(html.Div("Text"), width=3),
             dbc.Col(html.Div("Text"), width=3),
             dbc.Col(html.Div("Text"), width=3),
         ], align='center'),
@@ -96,23 +89,29 @@ app.layout = html.Div([
             dbc.Col(drawFigure(df, 'a4'), width=3),
         ], align='center'),
     ])
+
 ])
-@app.callback(Output("a0", "figure"),
-              Input(in_service, 'value'))         
-              #, [Input("url", "pathname")])
-def update(option1):
+
+@app.callback([Output("a0", "figure")
+              ,Output("sidebar_title","children")]
+              , [Input(in_service, 'value')
+              , Input("url", "pathname")])         
+def update_graph(option1, pathname):
     dff=df[df!=option1]
 
     fig=px.bar(dff, x="sepal_width", y="sepal_length", color="species")\
     .update_layout(
         template='plotly_dark',
-        plot_bgcolor='rgba(0, 0, 0, 0)',
-        paper_bgcolor='rgba(0, 0, 0, 0)',
+        plot_bgcolor=DARK_COLOR,
+        paper_bgcolor=DARK_COLOR,
     )
+               
+    return fig, pathname.replace("/", "")
 
-                
-    return fig
-
+# @app.callback([Output("callback2", "children")]   
+#              , [Input("url", "pathname")])         
+# def update_page(pathname):
+#     return pathname.replace("/", "")
 
 
 # Run the app
