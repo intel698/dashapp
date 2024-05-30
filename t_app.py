@@ -2,7 +2,7 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import dcc, Dash
 import plotly.express as px
-from dash import Input, Output, dcc, html
+from dash import Input, Output, html
 
 app = Dash(__name__, use_pages=True, external_stylesheets=[dbc.themes.SLATE])
 
@@ -46,4 +46,5 @@ app.layout = html.Div([dcc.Location(id="url")
 ])
 
 if __name__ == '__main__':
+    print(__file__)
     app.run(debug=False)
