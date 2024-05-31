@@ -3,6 +3,9 @@ import dash_bootstrap_components as dbc
 from dash import dcc, Dash
 import plotly.express as px
 from dash import Input, Output, html
+import os
+
+pages_folder=os.path.join(os.path.dirname(__name__), "pages")
 
 app = Dash(__name__, use_pages=True, external_stylesheets=[dbc.themes.SLATE])
 
@@ -27,11 +30,10 @@ sidebar = html.Div(
         html.H2(id='callback2', className="lead"),
         dbc.Nav(
             [
-            dbc.NavLink("Actuals", href="/Actuals", active="exact"),
-            dbc.NavLink("KPI", href="/KPI", active="exact"),
             dbc.NavLink("Home", href="/home", active="exact"),
-            dbc.NavLink("Predictive Analytics", href="/PredictiveAnalytics"
-                        , active="exact"),
+            dbc.NavLink("Dashboard", href="/KPI", active="exact"),   
+            dbc.NavLink("Predictive Analytics", href="/PredictiveAnalytics", active="exact"),
+            dbc.NavLink("Inference", href="/Actuals", active="exact"),
             ],
             vertical=True,
             pills=True,
