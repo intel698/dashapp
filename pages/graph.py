@@ -15,7 +15,7 @@ def period_list(curr_per, n_per): return [curr_per - i for i in range(n_per)][::
 
 def create_results_graph(dfqq, columna):
   
-  dfqq.index =  [str(i)[:4] + str(i)[-2:] for i in g1.index]
+  dfqq.index =  [str(i)[:4] + str(i)[-2:] for i in dfqq.index]
 
   fig = go.Figure()
   fig.update_layout(
@@ -60,7 +60,7 @@ def create_byplan_graph(df_plan_in):
     return fig1
 
 
-def create_customer_profile(df_in_g3):
+def create_customer_profile_graph(df_in_g3):
 
     fig2=px.bar(df_in_g3, x="duration", y="Household", color="hotspot").update_layout(title="Customer Profile")
     fig2.update_xaxes(title_text='Customer tenure in months')
@@ -102,7 +102,7 @@ def create_compare_graph(delta_nn_per):
 
     return fig4
 
-def create_month_add(df, mes, cantidad):
+def create_month_add_graph(df, mes, cantidad):
 
     # Group data by month
     box_p_month = [df.loc[df.index.month == i, 'Net_add'] for i in range(1, 13)]
@@ -153,24 +153,24 @@ def create_month_add(df, mes, cantidad):
 
 
 
-per_currQ = pd.Period('2022Q4')
-per_currM = pd.Period('2022-12')
-per_list_g1 = period_list(per_currQ, 8)
-per_list_g2 = period_list(per_currQ, 5)
+# per_currQ = pd.Period('2022Q4')
+# per_currM = pd.Period('2022-12')
+# per_list_g1 = period_list(per_currQ, 8)
+# per_list_g2 = period_list(per_currQ, 5)
 
-g1 = dfq[dfq.index.isin(per_list_g1)]
-create_results_graph(g1, 'Revenue').show()
-create_results_graph(g1, 'End_Count').show()
+# g1 = dfq[dfq.index.isin(per_list_g1)]
+# create_results_graph(g1, 'Revenue').show()
+# create_results_graph(g1, 'End_Count').show()
 
-g2 = cust_detail.groupby('hotspot')[per_list_g2].sum()
-create_byplan_graph(g2).show()
+# g2 = cust_detail.groupby('hotspot')[per_list_g2].sum()
+# create_byplan_graph(g2).show()
 
-g3 = cust_detail[cust_detail[per_currQ]!=0].groupby(['hotspot'
-        , 'Household','duration'])[per_currQ].count().reset_index()
-create_customer_profile(g3).show()
+# g3 = cust_detail[cust_detail[per_currQ]!=0].groupby(['hotspot'
+#         , 'Household','duration'])[per_currQ].count().reset_index()
+# create_customer_profile_graph(g3).show()
 
-g4 = compare_periods(dfq, per_currQ, per_currQ-4)
-create_compare_graph(g4).show()
+# g4 = compare_periods(dfq, per_currQ, per_currQ-4)
+# create_compare_graph(g4).show()
 
-g5 = df
-create_month_add(g5, 'Jun', 1200)
+# g5 = df
+# create_month_add_graph(g5, 'Jun', 1200).show()

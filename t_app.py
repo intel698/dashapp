@@ -4,6 +4,7 @@ from dash import dcc, Dash
 import plotly.express as px
 from dash import Input, Output, html
 import os
+from pages.graph import *
 
 pages_folder=os.path.join(os.path.dirname(__name__), "pages")
 
