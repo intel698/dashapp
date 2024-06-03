@@ -10,6 +10,7 @@ pages_folder=os.path.join(os.path.dirname(__name__), "pages")
 
 app = Dash(__name__, use_pages=True, external_stylesheets=[dbc.themes.SLATE])
 
+
 app.config['suppress_callback_exceptions'] = True
 
 
@@ -19,11 +20,11 @@ SIDEBAR_STYLE = {
     "top": 0,
     "left": 0,
     "bottom": 0,
-    "width": "12rem",
+    "width": "11rem",
     "padding": "2rem 1rem",
     "background-color": 'rgba(0, 0, 0, 0)',
 }
-df = px.data.iris()
+
 sidebar = html.Div(
     [
         html.H2(id="sidebar_title", className="display-4"),
@@ -33,7 +34,7 @@ sidebar = html.Div(
             [
             dbc.NavLink("Home", href="/home", active="exact"),
             dbc.NavLink("Dashboard", href="/KPI", active="exact"),   
-            dbc.NavLink("Predictive Analytics", href="/PredictiveAnalytics", active="exact"),
+            dbc.NavLink("Predictive \n Analytics", href="/PredictiveAnalytics", active="exact"),
             dbc.NavLink("Inference", href="/Actuals", active="exact"),
             ],
             vertical=True,
@@ -50,4 +51,4 @@ app.layout = html.Div([dcc.Location(id="url")
 
 if __name__ == '__main__':
     print(__file__)
-    app.run(debug=False)
+    app.run(debug=True)
