@@ -8,11 +8,10 @@ import numpy as np
 from pages.create_data import load
 import dash_bootstrap_components as dbc
 from pages.create_data import *
-
 DARK_COLOR = 'rgba(0, 0, 0, 0)'
 MY_STYLE = {'backgroundColor': 'rgba(207, 207, 207, 207)', 'color': 'black'}
 
-dash.register_page(__name__, path='/PredictiveAnalytics')
+dash.register_page(__name__, path='/Inference')
 
 layout = html.Div([
 dbc.Container([
@@ -20,13 +19,12 @@ dbc.Container([
         dbc.Col(width=1),
         dbc.Col(children=[    
             html.H1('Coming soon....working on it'),
-            html.P("For predictive analytics we will model 1) Customer additions, and 2) Customer churn \
-           (survival) and 3) Variable Revenue to create a whole set of financial expectations:"),
+            html.P("For inference, we will look at the factors that influence customer behavior:"),
             html.Ul([
-                html.Li("For additions, we will use time series forecasting using a mix of modern \
-                        machine learning models as well as traditional ARIMA models"),
-                html.Li("For customer churn, we will use maximum likelihood estimation and a Weibul distribution"),
-                    ]),
+                html.Li("For additions we'll look at ARIMAX models and Poisson with covariates"),
+                html.Li("For customer churn, we'll look at Cox proportional hazard, as well as adding \
+                        covariates to our Weibull model"),
+                html.Li("Customer segmentation, and unobserved heterogeneity")])
             ]),
         dbc.Col(),
     ], align='center'),]),

@@ -4,7 +4,9 @@ from dash import dcc, Dash
 import plotly.express as px
 from dash import Input, Output, html
 import os
-from pages.graph import *
+from pages.create_graphs import *
+
+print("Starting")
 
 pages_folder=os.path.join(os.path.dirname(__name__), "pages")
 
@@ -27,15 +29,15 @@ SIDEBAR_STYLE = {
 
 sidebar = html.Div(
     [
-        html.H2(id="sidebar_title", className="display-4"),
+        #html.H2(id="sidebar_title", className="display-4"),
         html.Hr(),
         html.H2(id='callback2', className="lead"),
         dbc.Nav(
             [
             dbc.NavLink("Home", href="/home", active="exact"),
-            dbc.NavLink("Dashboard", href="/KPI", active="exact"),   
+            dbc.NavLink("Dashboard", href="/dashboard", active="exact"),   
             dbc.NavLink("Predictive \n Analytics", href="/PredictiveAnalytics", active="exact"),
-            dbc.NavLink("Inference", href="/Actuals", active="exact"),
+            dbc.NavLink("Inference", href="/Inference", active="exact"),
             ],
             vertical=True,
             pills=True,
