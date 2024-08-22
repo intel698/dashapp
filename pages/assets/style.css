@@ -1,0 +1,34 @@
+/* Style the dropdown container */
+
+/* Change background color of dropdown list */
+.Select-menu-outer {
+    background-color: black !important;
+}
+
+/* Change text color of dropdown list */
+.Select-option {
+    color: white !important;
+}
+.Select-value-label {
+color: white !important;
+}
+.Select input{
+    color:white !important;
+  }
+  
+
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner input:not([type=radio]):not([type=checkbox]){
+    color: white!important;
+}
+
+/* Target the dropdown selected item */
+.my-dropdown .dropdown-item:checked {
+    background-color: #ffcc00; /* Change the background color */
+    color: #ffffff;            /* Change the text color to white */
+}
+
+/* Optionally, style the options when hovered */
+.my-dropdown .dropdown-item:hover {
+    background-color: #00ccff; /* Change hover background color */
+    color: #ffffff;            /* Change hover text color to white */
+}
