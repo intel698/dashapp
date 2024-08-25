@@ -2,7 +2,7 @@
 
 /* Change background color of dropdown list */
 .Select-menu-outer {
-    background-color: black !important;
+    background-color: #272b30 !important;
 }
 
 /* Change text color of dropdown list */
@@ -23,12 +23,6 @@ color: white !important;
 
 /* Target the dropdown selected item */
 .my-dropdown .dropdown-item:checked {
-    background-color: #ffcc00; /* Change the background color */
     color: #ffffff;            /* Change the text color to white */
 }
 
-/* Optionally, style the options when hovered */
-.my-dropdown .dropdown-item:hover {
-    background-color: #00ccff; /* Change hover background color */
-    color: #ffffff;            /* Change hover text color to white */
-}

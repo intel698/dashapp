@@ -1,25 +1,36 @@
 import pickle as pk
 import pandas as pd
 import numpy as np
+import os
 from lifelines import KaplanMeierFitter
+
+pd.set_option('display.float_format', lambda x: f'{x:.2f}')
 
 # Load monthly, quarterly and customer detail dataframes
 def load():
-  df = pk.load(open('c:\Data\df.pkl', 'rb'))
-  dfq = pk.load(open('c:\Data\dfq.pkl', 'rb'))          
-  cust_detail = pk.load(open('c:\Data\cust_detail.pkl', 'rb')) 
+  cwd = os.getcwd()
+  if cwd.endswith('pages'): cwd = os.path.dirname(cwd)
+
+  df_path = os.path.join(cwd, 'data','df.pkl')
+  dfq_path = os.path.join(cwd, 'data','dfq.pkl')
+  cust_detail_path = os.path.join(cwd, 'data','cust_detail.pkl')
+
+  df = pk.load(open(df_path, 'rb'))
+  dfq = pk.load(open(dfq_path, 'rb'))          
+  cust_detail = pk.load(open(cust_detail_path, 'rb')) 
+
+  dfq = dfq.assign(
+        Basic_Rev = dfq['Basic'] * dfq['Basic Plan'] * 3
+      , Standard_Rev = dfq['Standard'] * dfq['Standard Plan'] * 3
+      , Premium_Rev = dfq['Premium'] * dfq['Premium Plan'] * 3
+  )
+
+  
+
   return df, dfq, cust_detail
-
 # per_currQ = pd.Period('2022Q4') # Reuturn a list n periods 
-def period_list(curr_per, n_per): return [curr_per - i for i in range(n_per)][::-1]
-
-# Use to save variables in a log for debugging
-def log_variable(*args):
-  with open("log.txt", "a") as file:
-    for i in range(len(args)):   
-      file.write(str(args[i]) + "\n")
-    file.write("\n-------------------------------\n")
-
+def get_period_list(curr_per, n_per):
+  return [curr_per - i for i in range(n_per)][::-1]
 # Returns "Up" or "Down" and the percentage from an intial and final value
 def pct(final, initial):
   tot_c = (float(final) - float(initial))/float(initial)
@@ -27,9 +38,8 @@ def pct(final, initial):
   if tot_c < 0: return "Down {:.2%}".format(tot_c)
   else: return "Up {:.2%} ".format(tot_c)
    
-
 # This function returns the changes in revenue for the walk
-# 
+# Input: dataframeQ, current quarter, number of periods to compare
 def data_compare_periods(dfq, per_currQ, per_compare):
   per_currQ_prior = per_currQ - per_compare
 
@@ -54,62 +64,76 @@ def data_compare_periods(dfq, per_currQ, per_compare):
   adjustment = change.at['Subscriber Revenue','diff']/np.sum(r2+s2)
   delta_nn = list(np.stack([r2, s2], axis=0).flatten()*adjustment)
   delta_nn.append(change.at['Variable Revenue','diff'])
-  return delta_nn
 
-# This function returns the churn data by customer to use
-# for survival analysis and median life
-def data_create_avg_life_df(cust):
+  keys = ['Basic add', 'Standard add', 'Premium add', 'Basic price', 'Standard Price', 'Premium Price', 'Variable']
+  
+  return dict(zip(keys, delta_nn))
+# This function calculates the median life of a customer
+def calculate_median_duration(cust, per_currM):
   dur_df = cust.sort_values(by=['start'])[['start', 'end','duration']]
   dur_df[['start','end']] = dur_df[['start','end']].astype('period[M]')
 
-  dur_df_bin = dur_df['duration'].value_counts(dropna= False).to_frame()
-  dur_df_bin['Months in service'] = pd.cut(dur_df_bin.index
-                                          , bins=[0, 12, 24, 36, 48, np.inf]
-                                          , labels=["0-12", "12-24", "24-36","36-48" ,"Null"])
-  dur_df_bin = dur_df_bin.groupby('Months in service', dropna = False).sum()
-  dur_df_bin = dur_df_bin.groupby(dur_df_bin.index.fillna('Null')).sum()
-  dur_df_bin.index = dur_df_bin.index.add_categories('Active')
-  dur_df_bin.index = dur_df_bin.index.fillna('Active')
-
-  dur_df_bin.rename(index={'Null': 'Active'}, inplace=True)
-  dur_df_bin['Percentage'] = (dur_df_bin['count']/ dur_df_bin['count'].sum())
-  dur_df_bin.style.format({'Percentage': '{:.2%}'})
-
-  return dur_df, dur_df_bin
-
-def calculate_median_duration(df, per_currM):
-  df['duration'] = df.apply(lambda x: (per_currM - x['start']).n 
+  dur_df['duration'] = dur_df.apply(lambda x: (per_currM - x['start']).n 
       if pd.isna(x['duration']) else x['duration'], axis = 1)
-  df['event'] =  None
-  df.loc[~df['end'].isna(), 'event'] = 1
-  df['event'].fillna(0, inplace=True)
+  dur_df['event'] =  None
+  dur_df.loc[~dur_df['end'].isna(), 'event'] = 1
+  dur_df['event'].fillna(0, inplace=True)
 
   kmf = KaplanMeierFitter()
-  kmf.fit(df['duration'], df['event'])
-  median_life = kmf.median_survival_time_
+  kmf.fit(dur_df['duration'], dur_df['event'])
 
-  if median_life>0: median_life = str(median_life)+ " months"
-  else: median_life = "Not reached"
-  return median_life
-
+  return  kmf.median_survival_time_
 # This function returns the revenue percentage by plan and variable revenue
-# 
-def data_transform_plan_df(cust_detail, dfq):
+def pivot_data_by_quarter(dfq):
   per_all_periods_list = pd.period_range(start='2018Q1', end='2023Q1', freq='Q-DEC')
   
-  a = cust_detail.groupby('plan')[per_all_periods_list].sum().stack().reset_index()
-  b = dfq[dfq.index.isin(per_all_periods_list)]['Variable Revenue'].reset_index()
-  b.insert(0, "plan", "Variable Revenue")
-  a.columns = ['Price plan', 'Quarter', 'Revenue']
-  b.columns = ['Price plan', 'Quarter', 'Revenue']
+  dfq = dfq[['Basic_Rev', 'Standard_Rev', 'Premium_Rev','Variable Revenue' ]]
+  dfq.rename(columns={'Variable Revenue':'Variable_Rev'}, inplace=True)
+  dfq = dfq[dfq.index.isin(per_all_periods_list)].stack().reset_index()
+  dfq.columns = ['Quarter', 'Price plan', 'Revenue']
+  dfq.set_index('Quarter', inplace=True)
+
+  return dfq
+
+def get_table_data(dfq, per_currQ):
+  period_list = get_period_list(per_currQ, 6)
+  dfq = dfq.loc[dfq.index.isin(period_list),
+                   ['End_Count', 'End_Count_PoP', 'End_Count_YoY'
+                    , 'ARPU', 'Revenue_PoP', 'Revenue_YoY',
+                    'Revenue',]]
   
-  plan_df_stack = pd.concat([a,b], axis=0, ignore_index=True)
-  plan_df_stack.set_index('Quarter', inplace=True)
+  dfq = dfq[['Revenue', 'Revenue_YoY', 'Revenue_PoP', 'End_Count', 'End_Count_YoY', 'End_Count_PoP', 'ARPU']]
+  
+  dfq['Revenue'] = dfq['Revenue']/1000
+  dfq['Revenue'] = dfq['Revenue'].map('${:,.0f}'.format)
+  dfq['Revenue_YoY'] = dfq['Revenue_YoY'].map('{:.2%}'.format)
+  dfq['Revenue_PoP'] = dfq['Revenue_PoP'].map('{:.2%}'.format)
+  dfq['End_Count'] = dfq['End_Count'].map('{:,.0f}'.format)
+  dfq['End_Count_PoP'] = dfq['End_Count_PoP'].map('{:.2%}'.format)
+  dfq['End_Count_YoY'] = dfq['End_Count_YoY'].map('{:.2%}'.format)
+  dfq['ARPU'] = dfq['ARPU'].map('${:,.0f}'.format)
 
-  return plan_df_stack
+  dfq.rename(columns={  'Revenue_YoY' :'Y over Y growth %'
+                      , 'Revenue_PoP':'Q over Q growth %'
+                      , 'End_Count':'Active users'
+                      , 'End_Count_PoP':'Q over Q growth %'
+                      , 'End_Count_YoY':'Y over Y growth %'
+                      , 'ARPU':'ARPU'
+                      }, inplace=True)
+  
+  dfq.index = dfq.index.strftime('%yQ%q')
+  return dfq.T.reset_index().rename(columns={'index': '($ in thousands)'})
 
-
-df, dfq, cust_detail = load()
+dfm, dfq, cust_detail = load()
 per_currQ = pd.Period('2022Q4')
+per_currM = per_currQ.asfreq('M')
 
-df4 = data_compare_periods(dfq, per_currQ, 4)
+df1 = data_compare_periods(dfq, per_currQ, 4)
+meadian = calculate_median_duration(cust_detail, per_currM)
+df2 = pivot_data_by_quarter(dfq)
+df3 = get_table_data(dfq, per_currQ)
+
+
+
+
+

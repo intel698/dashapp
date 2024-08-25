@@ -3,65 +3,82 @@ import dash_bootstrap_components as dbc
 from dash import dcc, Dash, callback
 import plotly.express as px
 from dash import Input, Output, dcc, html
-
+import os, sys
 
 from pages.create_graphs import *
 from pages.create_data import *
 from pages.create_cards import *
+from pages.create_table import *
+import warnings
+warnings.filterwarnings("ignore")
 
 dash.register_page(__name__, path='/dashboard')
 
-df, dfq, cust_detail = load()
+dfm, dfq, cust_detail = load()
 
 #* Define variables
-DARK_COLOR = 'rgba(0, 0, 0, 0)'
-MY_STYLE = {'backgroundColor': 'rgba(207, 207, 207, 207)', 'color': 'black'}
-
-id_counter = 0
-id_card_list = []
-
+MY_STYLE = {'backgroundColor': '#495057', 'color': 'white'}
+MY_CONFIG = {'displayModeBar': False}
 per_currQ = pd.Period('2022Q4')
 per_currM = per_currQ.asfreq('M')
-per_month_strftime_Mmm = per_currM.to_timestamp().strftime('%b')
-per_list = period_list(per_currQ, 6)
+per_list = get_period_list(per_currQ, 6)
 
 
 #*# Create result graphs
 # Main graphs
 df1 = dfq[dfq.index.isin(per_list)]
-g1 = create_results_graph(df1, 'Revenue')
-dccg1 = dcc.Graph(figure=g1, config={'displayModeBar': False}, style={ 'height': '40vh'})
+dccg1 = dcc.Graph(figure = create_results_graph(df1, 'Revenue')
+                  , config = MY_CONFIG
+                  , style={ 'height': '40vh'})
 
 #Waterfall Revenue Walk
-df4 = data_compare_periods(dfq, per_currQ, 4)
-lay4 = create_layout("Revenue Walk YoY", "Change in revenue by category", "Change in $", legend= False)
-g4 = create_compare_graph(lay4, df4)
-dccg4 = dcc.Graph(figure = g4, id = 'g4', config={'displayModeBar': False}, style={'height': '40vh'})
+df22 = list(data_compare_periods(dfq, per_currQ, 4).values())
+dccg22 = dcc.Graph(figure = create_compare_graph(df22)
+                  , config = MY_CONFIG
+                  , style={'height': '40vh'})
 
 # Breakout by plan
-df2 = data_transform_plan_df(cust_detail, dfq)
-g2 = create_byplan_graph(df2.loc[df2.index<per_currQ,:])
-dccg2 = dcc.Graph(figure = g2, id='g2',  config={'displayModeBar': False}, style={'height': '40vh'})
+df3 = pivot_data_by_quarter(dfq)
+dccg3 = dcc.Graph(figure = create_byplan_graph(df3.loc[df3.index<per_currQ,:])
+                  , config = MY_CONFIG
+                  , style={'height': '40vh'})
+#
 
-# Customer detail by plan by household
-df3 = cust_detail[cust_detail[per_currQ]!=0]\
-            .groupby(['plan', 'household','duration'])[per_currQ].count().reset_index()
-g3 = create_customer_profile_graph(df3)
-dccg3 = dcc.Graph(figure = g3, id='g3',  config={'displayModeBar': False}, style={'height': '40vh'})
+def create_result_table(dfq, per_currQ):
+    dfq = get_table_data(dfq, per_currQ)
+    result_table = dash_table_object('result_table')
+    result_table.style_cell = {'textAlign': 'center', 'width': '30px', 'backgroundColor': '#272b30', 'color': 'white'}
+    result_table.style_cell_conditional = [
+                {'if': {'column_id': '($ in thousands)'},  
+                'textAlign': 'left',
+                'minWidth': '50px',
+                'width': '50px',
+                'maxWidth': '50px',
+                'height': 'auto',
+                'whiteSpace': 'normal',
+                }]
+
+    base_dict =  {'if': {'row_index': 0},  
+                'backgroundColor': '#272b30',
+                'color': 'white',
+                'fontSize': '12px'}
+
+    result_table.style_data_conditional= [{**base_dict, 'if': {'row_index': row}} for row in [1, 2, 4, 5]]
+    result_table = result_table.create_table(dfq)
+    return create_card_graph(result_table)
 
 
-#Customer additions per month
-lay5 = create_layout("Customer additions per month", "Months", "Number of customers", legend = False)
-g5 = create_month_add_graph(lay5, df, per_currM.to_timestamp().strftime('%b'), df.at[per_currM, 'Net_add'])
-dccg5 = dcc.Graph(figure = g5, id = 'g5',  config={'displayModeBar': False}, style={'height': '40vh'})
 
 
-card_factory = create_card_factory()
+card0 = create_card_factory('card', 'Active Users', 10.2, 'Up 10% YoY')
+card1 = create_card_factory('card1', 'Revenue per user', 10.2, 'Up 10% YoY')
+card2 = create_card_factory('card2', 'Retention rate', '70%', 'Flat YoY')
+card3 = create_card_factory('card3', 'Median tenure', '27 months', 'Flat but great')
+card4 = create_card_factory('card4', 'Booking Backlog', '$315M', 'Increasing')
+card5 = create_card_factory('card00', 'Period Revenue', 10.2, 'Up 10% YoY')
 
-card1 = card_factory.create_card("Total ARPU", 10.2, "Up 10% YoY")
-card2 = card_factory.create_card("Retention rate", "70%", "Flat YoY")
-card3 = card_factory.create_card("Median tenure", "27 months", "Flat but great")
-card4 = card_factory.create_card("Booking Backlog", "$315M", "Increasing")
+result_table = create_result_table(dfq, per_currQ)
+card_table1 = html.Div(children=[result_table])
 
 # * Create inputs
 dcc_year = dcc.Dropdown(
@@ -73,7 +90,7 @@ dcc_year = dcc.Dropdown(
     ],
     clearable=False,
     value=2022,
-    style=MY_STYLE)
+    style=MY_STYLE|{'width': '100px'})
 
 dcc_qtr = dcc.Dropdown(
     options=[
@@ -84,94 +101,96 @@ dcc_qtr = dcc.Dropdown(
     ],
     clearable=False,
     value="Q4",
-    style=MY_STYLE)
+    style=MY_STYLE|{'width': '100px'})
 
 dcc_cc = dcc.Checklist(
     ['Constant Currency'],
     id='my-checkbox',
     labelStyle={'display': 'block'}, 
-    style={'backgroundColor':DARK_COLOR})
+    style=MY_STYLE)
     
-
 
 layout = html.Div([
 dbc.Container([
         dbc.Row([
-            dbc.Col(width=2),
-            dbc.Col(children = [html.Label('Select a Year:'), dcc_year,
-                                html.Label('Select a Qtr:'), dcc_qtr,
-                                dcc_cc], width=2),
-            dbc.Col(card1, width=2),
-            dbc.Col(card2, width=2),
-            dbc.Col(card3, width=2),
-            dbc.Col(card4, width =2),
+            dbc.Col(dbc.Card(children = [
+                    html.Label('Select a Year:'), dcc_year,
+                    html.Label('Select a Qtr:'), dcc_qtr,
+                    dcc_cc]), width=2),
+            dbc.Col(card5.card, width=2),
+            dbc.Col(card0.card, width=2),
+            dbc.Col(card1.card, width=2),
+            dbc.Col(card2.card, width=2),
+            dbc.Col(card3.card, width =2),
         ], align='center'),
         html.Br(),
         dbc.Row([
             dbc.Col(create_card_graph(dccg1), width=5),
-            dbc.Col(create_card_graph(dccg4), width=7), 
+            dbc.Col(create_card_graph(dccg22), width=7), 
             #dbc.Col(dccg2, width=4),
         ], align='center'),
         html.Br(),
         dbc.Row([
-            dbc.Col(create_card_graph(dccg3), width=7),
-            dbc.Col(create_card_graph(dccg2), width=5),
+            dbc.Col(card_table1, width=6),
+            dbc.Col(create_card_graph(dccg3), width=6),
         ], align='center'),
         html.Br(),
-        dbc.Row([
-            dbc.Col(create_card_graph(dccg5), width=9),
-        ], align='center'),
     ]),
 ])
 
 
 @callback(
     [Output(dccg1, 'figure'),
-     Output(dccg4, 'figure'),
-     Output(dccg5, 'figure'),
+     Output(dccg22, 'figure'),
      Output(dccg3, 'figure'),
-     Output(dccg2, 'figure'),
-     Output(card_factory.id_card_list[0][0], 'children'), 
-     Output(card_factory.id_card_list[0][1], 'children'),                     
-     Output(card_factory.id_card_list[1][0], 'children'),
-     Output(card_factory.id_card_list[2][0], 'children'),                             
+     Output(card_table1, 'children'),
+     Output(card0.text_id, 'children'),
+     Output(card0.para_id, 'children'),
+     Output(card1.text_id, 'children'), 
+     Output(card1.para_id, 'children'),                     
+     Output(card2.text_id, 'children'),
+     Output(card3.text_id, 'children'),  
+     Output(card5.text_id, 'children'),
+     Output(card5.para_id, 'children')
     ],
     [Input(dcc_qtr, 'value'), 
      Input(dcc_year, 'value')]
 )
 def drop_down_changed(qtr, yr):
-    per_currQ = pd.Period(str(yr)+qtr)
+    per_currQ = pd.Period(str(yr) + qtr)
     per_currM = per_currQ.asfreq('M')
-    per_list_g11 = period_list(per_currQ, 6)
-    per_month_strftime_Mmm = per_currM.to_timestamp().strftime('%b')
+    per_list_g11 = get_period_list(per_currQ, 6)
 
 
-    df1 = dfq[dfq.index.isin(per_list_g11)]
-    df3 = cust_detail[cust_detail[per_currQ]!=0]\
-            .groupby(['plan', 'household','duration'])[per_currQ].count().reset_index()
-    
-    df4 = data_compare_periods(dfq, per_currQ, 4)
-    df5, _ = data_create_avg_life_df(cust_detail)
+    df1 = dfq[dfq.index.isin(per_list_g11)]   
+    df2 = list(data_compare_periods(dfq, per_currQ, 4).values())
 
-
-    ARPU = "${:,.1f}".format(dfq.loc[dfq.index==per_currQ, 'ARPU'].values[0])
-    ARPU_YOY = pct(dfq.loc[dfq.index==per_currQ, 'ARPU'].values[0]
-                , dfq.loc[dfq.index==(per_currQ-4), 'ARPU'].values[0]) + " YoY"
-    RETENTION = "{:,.1%}".format(dfq.loc[dfq.index==per_currQ, 'Retention'].values[0])  
-    MEDIAN_LIFE = calculate_median_duration(df5, per_currM)
+    revenue = dfq.loc[dfq.index==per_currQ, 'Revenue'].values[0]/1000
+    revenue_yoy = pct(dfq.loc[dfq.index==per_currQ, 'Revenue'].values[0]
+                    , dfq.loc[dfq.index==(per_currQ-4), 'Revenue'].values[0])
+    arpu = dfq.loc[dfq.index==per_currQ, 'ARPU'].values[0]
+    arpu_yoy = pct(dfq.loc[dfq.index==per_currQ, 'ARPU'].values[0]
+                , dfq.loc[dfq.index==(per_currQ-4), 'ARPU'].values[0])
+    cust_count = dfq.loc[dfq.index==per_currQ, 'End_Count'].values[0]
+    cust_count_yoy = pct(dfq.loc[dfq.index==per_currQ, 'End_Count'].values[0],
+                    dfq.loc[dfq.index==(per_currQ-4), 'End_Count'].values[0]) 
+                         
+    retention = "{:,.1%}".format(dfq.loc[dfq.index==per_currQ, 'Retention'].values[0])  
+    median_life = str(calculate_median_duration(cust_detail, per_currM))+ " months"
 
     
     return [ create_results_graph(df1 , 'Revenue')
-            , create_compare_graph(lay4, df4)
-            , create_month_add_graph(lay5, df 
-                    , per_month_strftime_Mmm
-                    , df.at[per_currM, 'Net_add'])
-            , create_customer_profile_graph(df3)
-            , create_byplan_graph(df2.loc[df2.index<=per_currQ,:])
-            , ARPU
-            , ARPU_YOY
-            , RETENTION
-            , MEDIAN_LIFE
+            , create_compare_graph(df2)
+            , create_byplan_graph(df3.loc[df3.index<=per_currQ,:])
+            , create_result_table(dfq, per_currQ)
+            , f"{cust_count:,}"
+            , cust_count_yoy + " YoY"
+            , f"${arpu:,.1f}"
+            , arpu_yoy+ " YoY"
+            , retention
+            , median_life
+            , f"${revenue:,.1f}"
+            , revenue_yoy + " YoY"
             ] 
             
 

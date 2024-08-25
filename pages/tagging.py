@@ -1,140 +1,36 @@
+
 import dash
-from dash import dcc, html, dash_table, callback, callback_context as ctx
+import re
+import io
+import os
+from dash import dcc, html, callback, callback_context as ctx
 from dash.dependencies import Input, Output, State
-from dash.dash_table import DataTable, FormatTemplate, Format
-from dash.dash_table.Format import Format, Scheme, Group
+# from dash.dash_table import DataTable, FormatTemplate, Format
+# from dash.dash_table.Format import Format, Group
+from pages.create_table import *
 
 import dash_bootstrap_components as dbc
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import pickle
-import re
-import openpyxl
-import io
+
+
+cwd = os.getcwd()
+list_path = os.path.join(cwd, 'data','my_list.pkl')
+source_path = os.path.join(cwd, 'data','rf.csv')
 
 dash.register_page(__name__, path='/tagging')
 
 pd.set_option('display.float_format', '{:,.0f}'.format)
-
-source_path = r'RF.csv'
-list_path = r'my_list.pkl'
-
+ 
 
 initial_value = 14940
 dark_style =  {'backgroundColor': 'rgba(56, 56, 56, 56)', 'color': 'white'}
 html_tag_layout = {     'display':'inline-block'
-                       ,'margin-right': '10px', 
-                        'margin': '5px',          
-                        'padding-top': '0',       
-                        'vertical-align': 'center'}
-
-# Dash table object factory
-class dash_table_object:
-    """
-    Functions:
-    1) create_formatting_col: Returns a list of dicitonaries (one dict per column) used to format each column. 
-    Each column is defined as a dictioanry in the list:
-        {'name' : 'display_name', 
-         'id': 'id' ,
-         'type': 'numeric',
-         'format': format_object
-         }
-    Different columns have different formatting, if no special formatting, just add id and name
-
-    2) get_table - Returns a Data Table with the columns created above.  Style the actual table.
-
-    """
-
-    def __init__(self, df: pd.DataFrame, table_id: str):
-        
-        config_dict = { 
-            # table_id:  [ page_size, [exlcude column list], filter_none ]
-            'base_table': [20, ['auto_cat', 'abs', 'period', 'loc', 'sort_keys'], 'native'],
-            'grouped_table': [30, ['abs'], 'none'],
-            'clust_table': [30, ['abs'], 'none']
-        }
-
-        self.df = df
-        self.table_id = table_id                                # ID to use for Dash DataTable 
-        self.page_size = config_dict[table_id][0]
-        self.exclude_list = config_dict[table_id][1]                # Columns that are in df but shouldnt be in on table shown
-        self.filter_option = config_dict[table_id][2]
-        self.fmt = Format().decimal_delimiter('0').group(Group.yes).groups(3)
-
-    def create_formatting_col(self, list_in):
-        dt_col_list =  []
-
-        for g in list_in:
-            if g in self.exclude_list: continue     ## Exlclude column from the df
-            if g in ['USD Amt', 'abs']:
-                dt_col_list.append({
-                            "name": g
-                            , "id": g
-                            , 'type': 'numeric'
-                            , 'format':self.fmt})
-            elif g in ['co', 'loc', 'cost', 'account']:
-                dt_col_list.append({
-                            "name": g
-                            , "id": g
-                            , 'type': 'numeric'})
-            else: 
-                dt_col_list.append({"name": g, "id": g})
-        return dt_col_list
-
-    def get_table(self):
-        tabla =  DataTable(
-            id=self.table_id,
-            data=self.df.to_dict('records'),
-            columns=self.create_formatting_col(list(self.df.columns)),
-            column_selectable='single',
-            sort_action='native',
-            filter_action=self.filter_option,
-            page_size=self.page_size
-            # css=[{'selector': '.data-table-filter-input', 'rule': 'color : white !important'}]
-        , style_table={
-            'overflowX': 'auto'
-        }
-        , style_cell={
-                'textAlign': 'left'
-                ,'overflow': 'hidden'
-                ,'textOverflow': 'ellipsis'
-                ,'fontSize': '14px'
-                ,'minWidth': '15px'
-                ,'width': '50px'
-                ,'maxWidth': '500px'
-                ,'backgroundColor': '#495057'  
-                ,'color': 'white'  
-                ,'border': '1px solid #3e444a'  
-            }
-        , style_cell_conditional=[
-                {'if': {'column_id': 'USD Amt'}
-                        ,'textAlign': 'right'
-                        ,'minWidth': '25px'
-                        ,'width': '40px'
-                        ,'maxWidth': '100px'   
-                }],
-        style_filter={
-            'backgroundColor': '#272b30',
-            'color': 'white'
-            },
-        # Style specific to SLATE themse    
-        style_header={
-            'backgroundColor': '#272b30',  
-            'color': 'white', 
-            'border': '1px solid #3e444a'  
-            },
-        style_data={
-            'backgroundColor': '#343a40', 
-            'color': 'white',  
-            },
-        # style_data_conditional = [
-        #     {
-        #         'if': {'row_index': 'odd'},  # Alternate row colors
-        #         'backgroundColor': '#6c757d'  # Slightly darker background for odd rows
-        #     }]
-        )
-        return tabla
+                       ,'margin-right': '10px' 
+                       ,'margin': '5px'          
+                       ,'padding-top': '0'       
+                       ,'vertical-align': 'center'}
 
 # Load saved categories
 with open(list_path, 'rb') as file:
@@ -253,11 +149,25 @@ cluster_df = cluster_df.sort_values(by=['abs'], ascending=False)[:10]
 ###############
 
 # Main table
-main_table = dash_table_object(df_raw[df_raw['account']==initial_value], 'base_table').get_table()
+# config_dict = dict(exclude_cols= None, dollar_cols=None, numeric_cols=None, percent_cols=None, filter_option=None)
+col_setting_dict = { 'numeric_cols': []
+                    , 'exclude_cols': ['sort_keys', 'abs', 'period']
+                    , 'dollar_cols': ['USD Amt']}
+
+main_table = dash_table_object('base_table', col_setting_dict)
+main_table.filter_action = 'native'
+main_table.sort_action = 'native'
+main_table = main_table.create_table(df_raw[df_raw['account']==initial_value])
+
 # Categories table
-category_table = dash_table_object(init_base_df, 'grouped_table').get_table()
+category_table = dash_table_object('grouped_table', col_setting_dict)
+category_table.sort_action = 'native'
+category_table = category_table.create_table(init_base_df)
+
 # Cluster table
-cluster_table = dash_table_object(cluster_df, 'clust_table').get_table()
+cluster_table = dash_table_object('clust_table', col_setting_dict)
+cluster_table.sort_action = 'native'
+cluster_table = cluster_table.create_table(cluster_df)
 
 #### Graphs
 
@@ -324,6 +234,15 @@ dd_input = dcc.Input(
     style={'display':'inline-block', 'margin-right': '5px'}| dark_style
     )
 
+offcanvas = dbc.Offcanvas(
+    [html.H6("Add or remove keywords to use to categorize the data"),
+     html.H6("Any line with no associated keyword, is grouped into the Other category"),
+    html.Img(src="https://i.ibb.co/LrsYQ0R/help.png", style={"width": "50%", "height": "80%"})],
+    id="offcanvas",
+    is_open=False,
+    placement="top",
+    style={"height": "70%"}
+)
 
 ###################
 ## Dash layout
@@ -342,24 +261,25 @@ layout = html.Div([
             dd_input,
             dbc.Button( "Add Tag", id="add-option-button",  size="sm", style={'display':'inline-block', 'margin-right': '5px'}),
             dbc.Button('Show/Hide Graph', id='graph_button', size="sm", style={'display':'inline-block', 'margin-right': '5px'}),
-            dbc.Button( "Download", id="btn-download", size="sm", style={'display':'inline-block', 'margin-right': '50px'}),
+            dbc.Button( "Download", id="btn-download", size="sm", style={'display':'inline-block', 'margin-right': '5px'}),
+            dbc.Button("How it works", id="open-offcanvas", size="sm", style={'display':'inline-block', 'margin-right': '50px'}, n_clicks=0),
             html.H5("Account: ", style = html_tag_layout), 
             dd_acc], width=11)
     ], align="top"),
     dbc.Row([
-        dbc.Col(width=1),
-        dbc.Col(children = [html.H4("Month-over-Month Change"),
-                            dbc.Collapse(children=[dbc.Card(dccg1), html.Br()], id='collapse', is_open=True)
-                          , html.Br()  
-                          , dbc.Card(main_table)
-                           ], width=8),
-        dbc.Col(children =[html.H4("Summary")
+          dbc.Col(width=1)
+        , dbc.Col(children = [html.H4("Month-over-Month Change")
+                            ,  dbc.Collapse(children=[dbc.Card(dccg1), html.Br(), html.Div()], id='collapse', is_open=True)
+                            #, html.Br()  
+                            , dbc.Card(main_table)
+                           ], width=8)
+        , dbc.Col(children =[html.H4("Summary")
                             , dbc.Card(category_table)
                             , dbc.Card(html.H4(id='card_total', children='', style={"textAlign": "right"}))
                             , html.H4("Top 15 Regions")
                             , dbc.Card(cluster_table)
                             ], width=3)
-    ])
+    ])], fluid=True)
     , dcc.Store(id='store', data=df_raw.to_dict('records'))
     , dcc.Store(id='active_df', data=df_raw[df_raw['account']==initial_value].to_dict('records'))
     , dbc.Tooltip("Enter new keyword here and click Add Tag", target="new-option-label", placement="top" )
@@ -369,7 +289,7 @@ layout = html.Div([
             [dbc.ModalHeader(dbc.ModalTitle("No keyword entered")),
             dbc.ModalBody("Please enter a keyword on the input box before clicking Add button")
             ], id="error_msg", is_open=False )
-    ], fluid=True)
+    , offcanvas
 ])
 
 ###################
@@ -395,6 +315,17 @@ def callback_update_card(df_in):
 def callback_toggle_collapse_button(nn, is_open):
     show_graph = not is_open
     return show_graph
+
+# Help button
+@callback(
+    dash.dependencies.Output("offcanvas", "is_open"),
+    dash.dependencies.Input("open-offcanvas", "n_clicks"),
+    dash.dependencies.State("offcanvas", "is_open")
+)
+def toggle_offcanvas(n, is_open):
+    if n:
+        return not is_open
+    return is_open
 
 # Download button
 @callback(

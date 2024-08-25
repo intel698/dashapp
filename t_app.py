@@ -3,7 +3,7 @@ import dash_bootstrap_components as dbc
 from dash import dcc, Dash
 import plotly.express as px
 from dash import Input, Output, html
-import os
+import os, sys
 from pages.create_graphs import *
 import warnings
 warnings.filterwarnings("ignore")
@@ -36,7 +36,7 @@ sidebar = html.Div(
         html.H2(id='callback2', className="lead"),
         dbc.Nav(
             [
-            dbc.NavLink("Home", href="/home", active="exact"),
+            dbc.NavLink("About", href="/", active="exact"),
             dbc.NavLink("Dashboard", href="/dashboard", active="exact"),   
             dbc.NavLink("Predictive \n Analytics", href="/PredictiveAnalytics", active="exact"),
             dbc.NavLink("Inference", href="/Inference", active="exact"),
